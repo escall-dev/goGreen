@@ -89,11 +89,6 @@ const markCommit = (x, y) => {
 
 const makeCommits = (n) => {
   if(n===0) return simpleGit().push();
-  
-  // 30% chance to create a cluster of 2-4 commits on the same day for darker green
-  const shouldCluster = Math.random() < 0.3;
-  const clusterSize = shouldCluster ? random.int(2, 4) : 1;
-  
   const x = random.int(0, 54);
   const y = random.int(0, 6);
   // Ensure no commits after September 2025 by capping the end date
@@ -102,31 +97,21 @@ const makeCommits = (n) => {
   const randomDate = startDate.clone().add(x, "w").add(y, "d");
   
   // If the random date exceeds September 2025, use a date within the valid range
-  const baseDate = randomDate.isAfter(endDate) ? 
-    startDate.clone().add(random.int(0, Math.floor(endDate.diff(startDate, 'days'))), 'days') : 
-    randomDate;
+  const date = randomDate.isAfter(endDate) ? 
+    startDate.clone().add(random.int(0, Math.floor(endDate.diff(startDate, 'days'))), 'days').format() : 
+    randomDate.format();
 
-  // Create multiple commits on the same day with slight time variations
-  for(let i = 0; i < clusterSize && n > 0; i++) {
-    // Add random hours/minutes to spread commits throughout the day
-    const date = baseDate.clone().add(random.int(0, 23), 'hours').add(random.int(0, 59), 'minutes').format();
-    
-    const data = {
-      date: date,
-    };
-    
-    const commitMessage = getRandomCommitMessage();
-    console.log(`Commit: ${commitMessage} (${date}) ${shouldCluster ? `[Cluster ${i+1}/${clusterSize}]` : ''}`);
-    
-    jsonfile.writeFile(path, data, () => {
-      simpleGit().add([path]).commit(commitMessage, { "--date": date }, i === clusterSize - 1 ? makeCommits.bind(this, n - clusterSize) : () => {});
-    });
-    
-    if(i < clusterSize - 1) {
-      // Small delay between clustered commits
-      setTimeout(() => {}, 100);
-    }
-  }
+  const data = {
+    date: date,
+  };
+  
+  const commitMessage = getRandomCommitMessage();
+  console.log(`Commit: ${commitMessage} (${date})`);
+  
+  jsonfile.writeFile(path, data, () => {
+    simpleGit().add([path]).commit(commitMessage, { "--date": date },makeCommits.bind(this,--n));
+  });
 };
 
-makeCommits(25);
+// Run multiple times to create overlapping commits for darker greens
+makeCommits(15);
